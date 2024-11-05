@@ -1,60 +1,13 @@
-import React, { useState } from 'react'
-import { Tv, Coffee, Wifi, Bath, Users, ChevronRight, Star, ChevronDown } from 'lucide-react'
-
-const CustomSelect = ({ options, placeholder, icon: Icon }) => {
-  const [isOpen, setIsOpen] = useState(false)
-  const [selected, setSelected] = useState('')
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-3 px-4 bg-white border border-gray-200 rounded-lg flex items-center justify-between
-                 hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                 transition-all duration-200"
-      >
-        <div className="flex items-center gap-3">
-          {Icon && <Icon size={18} className="text-gray-400" />}
-          <span className={`${selected ? 'text-gray-900' : 'text-gray-500'}`}>
-            {selected || placeholder}
-          </span>
-        </div>
-        <ChevronDown 
-          size={18} 
-          className={`text-gray-400 transition-transform duration-200 ${
-            isOpen ? 'rotate-180' : ''
-          }`}
-        />
-      </button>
-
-      {isOpen && (
-        <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg
-                      overflow-hidden transform transition-all duration-200 origin-top">
-          {options.map((option, index) => (
-            <button
-              key={index}
-              className="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center gap-3
-                       transition-colors duration-150
-                       text-gray-700 hover:text-blue-600"
-              onClick={() => {
-                setSelected(option)
-                setIsOpen(false)
-              }}
-            >
-              {Icon && <Icon size={18} className="text-gray-400" />}
-              {option}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Tv, Coffee, Wifi, Bath, Users, ChevronRight, Star } from 'lucide-react'
 
 const Rooms = () => {
+  const navigate = useNavigate()
+
   const rooms = [
     {
+      id: 1,
       name: 'Deluxe Room',
       price: '2,500',
       capacity: '2 Adults',
@@ -68,6 +21,7 @@ const Rooms = () => {
       ]
     },
     {
+      id: 2,
       name: 'Superior Room',
       price: '3,500',
       capacity: '2 Adults, 1 Child',
@@ -81,6 +35,7 @@ const Rooms = () => {
       ]
     },
     {
+      id: 3,
       name: 'Family Room',
       price: '4,500',
       capacity: '4 Adults',
@@ -95,23 +50,12 @@ const Rooms = () => {
     }
   ]
 
-  const filters = [
-    {
-      placeholder: 'Room Type',
-      icon: Bath,
-      options: ['All Rooms', 'Deluxe Room', 'Superior Room', 'Family Room']
-    },
-    {
-      placeholder: 'Capacity',
-      icon: Users,
-      options: ['Any Capacity', '2 Adults', '2 Adults, 1 Child', '4 Adults']
-    },
-    {
-      placeholder: 'Price Range',
-      icon: ChevronRight,
-      options: ['Any Price', '2,000 - 3,000', '3,000 - 4,000', '4,000+']
-    }
-  ]
+  const handleBookNow = (room) => {
+    // Store selected room in localStorage
+    localStorage.setItem('selectedRoom', JSON.stringify(room))
+    // Navigate to booking page
+    navigate('/booking')
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 font-inter">
@@ -129,14 +73,24 @@ const Rooms = () => {
       <div className="container mx-auto px-4 -mt-8">
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {filters.map((filter, index) => (
-              <CustomSelect 
-                key={index}
-                placeholder={filter.placeholder}
-                options={filter.options}
-                icon={filter.icon}
-              />
-            ))}
+            <select className="w-full p-3 border border-gray-200 rounded-lg">
+              <option>All Room Types</option>
+              <option>Deluxe Room</option>
+              <option>Superior Room</option>
+              <option>Family Room</option>
+            </select>
+            <select className="w-full p-3 border border-gray-200 rounded-lg">
+              <option>Any Capacity</option>
+              <option>2 Adults</option>
+              <option>2 Adults, 1 Child</option>
+              <option>4 Adults</option>
+            </select>
+            <select className="w-full p-3 border border-gray-200 rounded-lg">
+              <option>Any Price</option>
+              <option>2,000 - 3,000</option>
+              <option>3,000 - 4,000</option>
+              <option>4,000+</option>
+            </select>
           </div>
         </div>
       </div>
@@ -144,12 +98,12 @@ const Rooms = () => {
       {/* Room Listings */}
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {rooms.map((room, index) => (
-            <div key={index} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+          {rooms.map((room) => (
+            <div key={room.id} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300">
               {/* Room Image */}
               <div className="relative">
                 <img 
-                  src={`/images/room${index + 1}.png`}
+                  src={`/images/room${room.id}.png`}
                   alt={room.name}
                   className="w-full h-64 object-cover"
                 />
@@ -186,7 +140,12 @@ const Rooms = () => {
                     <p className="text-sm text-gray-500">per night</p>
                     <p className="text-xl font-bold text-blue-600">{room.price}</p>
                   </div>
-                  <button className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
+                  <button 
+                    onClick={() => handleBookNow(room)}
+                    className="bg-blue-500 text-white px-6 py-2 rounded-lg 
+                             hover:bg-blue-600 transition-colors 
+                             flex items-center gap-2"
+                  >
                     Book Now
                     <ChevronRight size={16} />
                   </button>
