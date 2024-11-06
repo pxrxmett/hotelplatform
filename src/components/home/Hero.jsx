@@ -1,15 +1,32 @@
-import React, { useState } from 'react'
-import { Play, Building2, Users, Calendar, ChevronDown } from 'lucide-react'
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Play, Building2, Users, Calendar, ChevronDown } from 'lucide-react';
 
 const Hero = () => {
-  const [activeDropdown, setActiveDropdown] = useState(null)
+  const navigate = useNavigate();
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [bookingData, setBookingData] = useState({
+    roomType: '',
+    guests: {
+      adults: '',
+      children: '0'
+    },
+    checkIn: '',
+    checkOut: '',
+  });
+
+  const [errors, setErrors] = useState({});
 
   const formFields = [
     {
       label: 'Room type',
       icon: Building2,
       type: 'select',
-      options: ['Deluxe Room', 'Superior Room', 'Family Room']
+      options: [
+        { name: 'Deluxe Room', price: 2500, capacity: { adults: 2, children: 0 } },
+        { name: 'Superior Room', price: 3500, capacity: { adults: 2, children: 1 } },
+        { name: 'Family Room', price: 4500, capacity: { adults: 4, children: 2 } }
+      ]
     },
     {
       label: 'Person',
@@ -27,21 +44,91 @@ const Hero = () => {
       icon: Calendar,
       type: 'date'
     }
-  ]
+  ];
+
+  const validateBooking = () => {
+    const newErrors = {};
+    
+    if (!bookingData.roomType) {
+      newErrors.roomType = 'Please select a room type';
+    }
+    
+    if (!bookingData.guests.adults) {
+      newErrors.guests = 'Please select number of guests';
+    }
+    
+    if (!bookingData.checkIn) {
+      newErrors.checkIn = 'Please select check-in date';
+    }
+    
+    if (!bookingData.checkOut) {
+      newErrors.checkOut = 'Please select check-out date';
+    }
+
+    if (bookingData.checkIn && bookingData.checkOut) {
+      const checkIn = new Date(bookingData.checkIn);
+      const checkOut = new Date(bookingData.checkOut);
+      if (checkOut <= checkIn) {
+        newErrors.checkOut = 'Check-out date must be after check-in date';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleBooking = () => {
+    if (!validateBooking()) {
+      return;
+    }
+
+    const selectedRoom = formFields[0].options.find(room => room.name === bookingData.roomType);
+    
+    // Create booking data
+    const booking = {
+      roomType: bookingData.roomType,
+      price: selectedRoom.price,
+      capacity: selectedRoom.capacity,
+      guests: {
+        adults: parseInt(bookingData.guests.adults),
+        children: 0
+      },
+      checkIn: bookingData.checkIn,
+      checkOut: bookingData.checkOut,
+      status: 'pending',
+      totalAmount: selectedRoom.price // Will be updated based on nights in booking page
+    };
+
+    // Store booking data
+    localStorage.setItem('pendingBooking', JSON.stringify(booking));
+
+    // Navigate to booking page
+    navigate('/booking', { state: { bookingData: booking } });
+  };
 
   const formatPersonText = (value) => {
-    return `${value} ${parseInt(value) === 1 ? 'Person' : 'Persons'}`
-  }
+    return `${value} ${parseInt(value) === 1 ? 'Person' : 'Persons'}`;
+  };
 
   const CustomSelect = ({ field, index }) => {
-    const [selected, setSelected] = useState('')
-    const [isOpen, setIsOpen] = useState(false)
+    const [isOpen, setIsOpen] = useState(false);
 
-    const displayText = selected 
-      ? field.label === 'Person' 
-        ? formatPersonText(selected) 
-        : selected
-      : `Select ${field.label.toLowerCase()}`
+    const handleSelect = (option) => {
+      const value = typeof option === 'object' ? option.name : option;
+      setBookingData(prev => ({
+        ...prev,
+        [field.label === 'Room type' ? 'roomType' : 
+         field.label === 'Person' ? 'guests' : '']: 
+         field.label === 'Person' ? { ...prev.guests, adults: value } : value
+      }));
+      setErrors(prev => ({ ...prev, [field.label.toLowerCase()]: '' }));
+      setIsOpen(false);
+      setActiveDropdown(null);
+    };
+
+    const displayText = field.label === 'Room type' ? bookingData.roomType :
+                       field.label === 'Person' ? (bookingData.guests.adults ? 
+                         formatPersonText(bookingData.guests.adults) : '') : '';
 
     return (
       <div className="relative">
@@ -52,13 +139,14 @@ const Hero = () => {
         <button
           type="button"
           onClick={() => {
-            setIsOpen(!isOpen)
-            setActiveDropdown(isOpen ? null : index)
+            setIsOpen(!isOpen);
+            setActiveDropdown(isOpen ? null : index);
           }}
-          className="w-full p-2 border border-gray-200 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white flex items-center justify-between font-inter"
+          className={`w-full p-2 border rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white flex items-center justify-between font-inter
+            ${errors[field.label.toLowerCase()] ? 'border-red-500' : 'border-gray-200'}`}
         >
-          <span className={selected ? 'text-gray-900' : 'text-gray-500'}>
-            {displayText}
+          <span className={displayText ? 'text-gray-900' : 'text-gray-500'}>
+            {displayText || `Select ${field.label.toLowerCase()}`}
           </span>
           <ChevronDown
             size={16}
@@ -66,29 +154,33 @@ const Hero = () => {
           />
         </button>
 
+        {errors[field.label.toLowerCase()] && (
+          <p className="text-red-500 text-sm mt-1">{errors[field.label.toLowerCase()]}</p>
+        )}
+
         {isOpen && activeDropdown === index && (
           <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto py-1">
-            {field.options.map((option) => (
+            {field.options.map((option, i) => (
               <button
-                key={option}
+                key={i}
                 type="button"
-                onClick={() => {
-                  setSelected(option)
-                  setIsOpen(false)
-                  setActiveDropdown(null)
-                }}
+                onClick={() => handleSelect(option)}
                 className={`w-full px-4 py-2 text-left hover:bg-blue-50 transition-colors duration-150 font-inter ${
-                  option === selected ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700 font-normal'
+                  (typeof option === 'object' ? option.name : option) === 
+                  (field.label === 'Room type' ? bookingData.roomType : bookingData.guests.adults)
+                    ? 'bg-blue-50 text-blue-600 font-medium'
+                    : 'text-gray-700 font-normal'
                 }`}
               >
-                {field.label === 'Person' ? formatPersonText(option) : option}
+                {typeof option === 'object' ? option.name : 
+                 field.label === 'Person' ? formatPersonText(option) : option}
               </button>
             ))}
           </div>
         )}
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <section className="container py-12 font-inter">
@@ -112,7 +204,10 @@ const Hero = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-4">
-            <button className="bg-blue-500 text-white px-6 py-2.5 rounded-md hover:bg-blue-600 transition-colors duration-200">
+            <button 
+              onClick={handleBooking}
+              className="bg-blue-500 text-white px-6 py-2.5 rounded-md hover:bg-blue-600 transition-colors duration-200"
+            >
               Book now
             </button>
             <button className="flex items-center gap-2 text-gray-700 hover:text-blue-500 transition-colors duration-200">
@@ -138,17 +233,37 @@ const Hero = () => {
                       </label>
                       <input
                         type="date"
-                        className="w-full p-2 border border-gray-200 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        min={field.label === 'Check out' && document.querySelector('input[type="date"]') 
-                          ? document.querySelector('input[type="date"]').value 
-                          : new Date().toISOString().split('T')[0]}
+                        className={`w-full p-2 border rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500
+                          ${errors[field.label.toLowerCase().replace(' ', '')] ? 'border-red-500' : 'border-gray-200'}`}
+                        min={field.label === 'Check out' && bookingData.checkIn ? 
+                          bookingData.checkIn : 
+                          new Date().toISOString().split('T')[0]}
+                        value={bookingData[field.label.toLowerCase().replace(' ', '')]}
+                        onChange={(e) => {
+                          setBookingData(prev => ({
+                            ...prev,
+                            [field.label.toLowerCase().replace(' ', '')]: e.target.value
+                          }));
+                          setErrors(prev => ({
+                            ...prev,
+                            [field.label.toLowerCase().replace(' ', '')]: ''
+                          }));
+                        }}
                       />
+                      {errors[field.label.toLowerCase().replace(' ', '')] && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {errors[field.label.toLowerCase().replace(' ', '')]}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
               ))}
             </div>
-            <button className="w-full bg-blue-500 text-white px-6 py-2.5 rounded-md hover:bg-blue-600 transition-colors duration-200 font-medium">
+            <button 
+              onClick={handleBooking}
+              className="w-full bg-blue-500 text-white px-6 py-2.5 rounded-md hover:bg-blue-600 transition-colors duration-200 font-medium"
+            >
               Book Now
             </button>
           </div>
@@ -164,7 +279,7 @@ const Hero = () => {
         </div>
       </div>
     </section>
-  )
-}
+  );
+};
 
-export default Hero
+export default Hero;

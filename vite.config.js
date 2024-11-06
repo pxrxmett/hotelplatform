@@ -6,11 +6,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: 7425,
     open: true,
-    /**
-     * Show QR code in terminal
-     */
     onListening: (server) => {
       const { address, port } = server.httpServer.address()
       const localIp = Object.values(require('os').networkInterfaces())
@@ -28,5 +25,12 @@ export default defineConfig({
     alias: {
       '@': '/src'
     }
+  },
+  // Add base URL configuration
+  base: '/',
+  // Add build configuration
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
   }
 })
